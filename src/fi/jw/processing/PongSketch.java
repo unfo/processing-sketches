@@ -18,6 +18,7 @@ public class PongSketch extends PApplet {
     final int paddleWidth = 16;
     final int paddleHeight = 128;
     final int padding = 16;
+    final int ballWidth = 16;
 
     int maxPaddle;
     int minPaddle = padding;
@@ -39,9 +40,10 @@ public class PongSketch extends PApplet {
         ballDirection = new PVector(cos(angle), sin(angle), 0);
         ballDirection.mult(5);
         scores[0] = 0;
-        scores[1] = 1;
-        //font = loadFont("Courier-48.vlw");
-//	  textFont(font);
+        scores[1] = 0;
+
+        font = createFont("Press Start 2P", 32);
+        textFont(font);
     }
 
     public void draw() {
@@ -59,14 +61,14 @@ public class PongSketch extends PApplet {
 
     private void drawBall() {
         moveBall();
-        fill(128);
-        rect(ballPosition.x, ballPosition.y, 16, 16);
+        fill(102, 255, 51);
+        rect(ballPosition.x, ballPosition.y, ballWidth, ballWidth);
     }
 
     private void moveBall() {
         ballPosition.add(ballDirection);
         int ballPadding = padding + paddleWidth;
-        if (ballPosition.x < ballPadding || ballPosition.x > (width - ballPadding))
+        if (ballPosition.x < ballPadding || ballPosition.x > (width - ballPadding - ballWidth))
             ballDirection.x *= -1;
 
         if (ballPosition.y < ballPadding || ballPosition.y > (height - ballPadding))
@@ -118,7 +120,7 @@ public class PongSketch extends PApplet {
     }
 
     private void drawScores() {
-//		text("" + scores[0], width/2 - 50, 50);
-//		text("" + scores[1], width/2 + 50, 50);
+		text("" + scores[0], width/2 - 50, 50);
+		text("" + scores[1], width/2 + 50, 50);
     }
 }
