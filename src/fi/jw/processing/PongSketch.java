@@ -19,6 +19,7 @@ public class PongSketch extends PApplet {
     PFont font;
     PFont timerFont;
 
+    final PVector xAxis = new PVector(10,0,0);
     final int paddleWidth = 16;
     final int paddleHeight = 64;
     final int padding = 16;
@@ -77,14 +78,14 @@ public class PongSketch extends PApplet {
 
         if (!gameOn) {
             long secondsSinceReset = (long)Math.floor((System.currentTimeMillis() - lastReset) / 1000);
-            long secondsToWait = 5;
+            long secondsToWait = 1;
             if (secondsSinceReset > secondsToWait) {
                 color(102,255,51);
                 gameOn = true;
             } else {
-                    textFont(timerFont);
-                    fill(255,0,0);
-                    text("" + (secondsToWait - secondsSinceReset), width/2 - 50, height/2 - 50);
+                textFont(timerFont);
+                fill(255,0,0);
+                text("" + (secondsToWait - secondsSinceReset), width/2 - 50, height/2 - 50);
             }
         }
         popMatrix();
@@ -97,38 +98,137 @@ public class PongSketch extends PApplet {
 
         fill(102, 255, 51);
         rect(ballPosition.x, ballPosition.y, ballWidth, ballWidth);
+        stroke(102,255,51);
+        strokeWeight(1);
+        line(ballPosition.x + ballWidth / 2, ballPosition.y + ballWidth / 2, ballPosition.x + ballDirection.x * 10, ballPosition.y + ballDirection.y * 10);
     }
 
-    boolean ballHitsPaddle(int paddle) {
-        return (ballPosition.y >= paddles[paddle].y && ballPosition.y <= paddles[paddle].y + paddleHeight);
+    HIT ballHitsPaddle(int paddle) {
+        float deltaY = ballPosition.y - paddles[paddle].y;
+        /*
+         MISS           b.y < p.y ==> b.y - p.y < 0
+         |   TOP
+         |   CENTER
+         |   CENTER
+         |   BOTTOM  _____ == paddleheight
+         MISS
+
+
+
+         */
+
+        if (deltaY < 0 || deltaY > paddleHeight) {
+            return HIT.MISS;
+        } else {
+            float fraction = (deltaY / paddleHeight);
+            log("fraction %f", fraction);
+            if (fraction <= (1f/4f)) {
+                return HIT.TOP;
+            } else if (fraction < (3f/4f)) {
+                return HIT.CENTER;
+            } else {
+                return HIT.BOTTOM;
+            }
+        }
+    }
+
+    public enum HIT {
+        MISS, TOP, CENTER, BOTTOM
     }
     private void moveBall() {
+        log("mag(): %f; x = %f ; y = %f", ballDirection.mag(), ballDirection.x, ballDirection.y);
+
         ballPosition.add(ballDirection);
         int ballPadding = padding + paddleWidth;
         boolean onPlayerCourt = ballPosition.x < (width / 2);
-        if (ballPosition.x < ballPadding || ballPosition.x > (width - ballPadding - ballWidth)) {
-            if (ballHitsPaddle(onPlayerCourt ? 0 : 1)) {
-                ballDirection.x *= -1;
-            } else {
-                if (onPlayerCourt) {
-                    scores[1] += 1;
-                } else {
-                    scores[0] += 1;
-                }
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    // don't care
-                }
-                reset();
+        boolean movingLeft = ballDirection.x < 0;
+        boolean atLeftBorder = ballPosition.x < ballPadding;
+        boolean atRightBorder = ballPosition.x > (width - ballPadding - ballWidth);
+
+        if ((movingLeft && atLeftBorder) || (!movingLeft && atRightBorder)) {
+            float angleAdjustment = 0.2f;
+            float velocityAdjustment = 0.2f;
+            switch (ballHitsPaddle(onPlayerCourt ? 0 : 1)) {
+                case MISS:
+                    if (onPlayerCourt) {
+                        scores[1] += 1;
+                    } else {
+                        scores[0] += 1;
+                    }
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        // don't care
+                    }
+                    reset();
+                    break;
+
+                //it hit, bounce it and add/sub velocity
+                case TOP:
+                    System.out.println("TOP HIT!");
+                    ballDirection.x *= -1;
+                    changeAngleAndAdjustVelocity(-angleAdjustment, velocityAdjustment);
+
+                    break;
+                case BOTTOM:
+                    System.out.println("BOTTOM HIT!");
+                    ballDirection.x *= -1;
+                    changeAngleAndAdjustVelocity(angleAdjustment, velocityAdjustment);
+                    break;
+                case CENTER:
+                    System.out.println("CENTER HIT!");
+                    ballDirection.x *= -1;
+                    break;
             }
 
         }
 
-        if (ballPosition.y < ballPadding || ballPosition.y > (height - ballPadding))
+        if (ballPosition.y < ballPadding) {
+            log("Hit ceiling => going down");
             ballDirection.y *= -1;
+        } else if (ballPosition.y > (height - ballPadding)) {
+            log("Hit bottom => going up");
+            ballDirection.y *= -1;
+        }
 
         movements[1].y = (ballPosition.y - paddleMiddle(1)) / 2;
+    }
+
+    private void changeAngleAndAdjustVelocity(float angle, float velocity) {
+        float angleDelta = changeAngle(angle);
+        log("Angle delta = %f", angleDelta);
+        adjustVelocity(velocity, angleDelta);
+    }
+    private void adjustVelocity(float adjustment, float angleDelta) {
+        boolean shouldSpeedup = (ballDirection.y * angleDelta) > 0;
+        if (shouldSpeedup) {
+            System.out.println("Speeding!");
+            if (ballDirection.mag() < 10f) {
+                ballDirection.mult(1f + adjustment);
+                log("slow %f => x = %f , y = %f", 1 + adjustment, ballDirection.x,ballDirection.y);
+            }
+        } else {
+            if (ballDirection.mag() > 1f) {
+                System.out.println("Slowing down!");
+                ballDirection.mult(1f - adjustment);
+                log("slow %f => x = %f , y = %f", 1 - adjustment, ballDirection.x,ballDirection.y);
+            } else {
+                System.out.println("Already too slow!" + ballDirection.mag());
+            }
+            ballDirection.limit(6f);
+        }
+    }
+
+    private float changeAngle(float adjustment) {
+        float xAngle = degrees(PVector.angleBetween(ballDirection, xAxis));
+        if (xAngle < 70 || (xAngle > 110 && xAngle < 250) || xAngle > 290) {
+            log("xAngle < 70: %s", xAngle);
+            ballDirection.y += adjustment;
+        } else {
+            log("xAngle > 70: %s", xAngle);
+        }
+        return (xAngle - abs(degrees(PVector.angleBetween(ballDirection, xAxis))));
+
     }
 
     public void keyPressed() {
@@ -141,6 +241,14 @@ public class PongSketch extends PApplet {
 
     }
 
+    String previousLogMessage = "";
+    void log(String pattern, Object... args) {
+        String msg = String.format(pattern, args);
+        if (!msg.equals(previousLogMessage))
+            System.out.println(msg);
+
+        previousLogMessage = msg;
+    }
     int paddleMiddle(int i) {
         return (int)(paddles[i].y + paddleHeight / 2);
     }
@@ -178,6 +286,6 @@ public class PongSketch extends PApplet {
     private void drawScores() {
         textFont(font);
         text("" + scores[0], width/2 - 50, 50);
-		text("" + scores[1], width/2 + 50, 50);
+        text("" + scores[1], width/2 + 50, 50);
     }
 }
