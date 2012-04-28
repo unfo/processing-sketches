@@ -2,6 +2,8 @@ package fi.jw.processing;
 
 import processing.core.*;
 
+import java.util.Date;
+
 public class PongSketch extends PApplet {
 
     /**
@@ -11,17 +13,22 @@ public class PongSketch extends PApplet {
 
     PVector[] paddles = new PVector[2];
     PVector[] movements = new PVector[2];
+    float[] recentMovements = new float[10];
     PVector ballPosition, ballDirection;
     int[] scores = new int[2];
     PFont font;
+    PFont timerFont;
 
     final int paddleWidth = 16;
-    final int paddleHeight = 128;
+    final int paddleHeight = 64;
     final int padding = 16;
     final int ballWidth = 16;
+    int tick = 0;
 
     int maxPaddle;
     int minPaddle = padding;
+    boolean gameOn = false;
+    long lastReset = System.currentTimeMillis();
 
     public void setup() {
         smooth();
@@ -31,19 +38,30 @@ public class PongSketch extends PApplet {
         noStroke();
         paddles[0] = new PVector(padding, padding, 0);
         paddles[1] = new PVector(width - paddleWidth - padding, padding, 0);
-        movements[0] = new PVector(0, 0, 0);
-        movements[1] = new PVector(0, 0, 0);
-        ballPosition = new PVector(width / 2, height / 2);
-        boolean goingLeft = (random(-1,1) > 0);
-        float angle = radians(random(0,90) + (goingLeft ? 90 : 0));
 
-        ballDirection = new PVector(cos(angle), sin(angle), 0);
-        ballDirection.mult(5);
         scores[0] = 0;
         scores[1] = 0;
 
+
         font = createFont("Press Start 2P", 32);
+        timerFont = createFont("Press Start 2P", 64);
         textFont(font);
+        reset();
+    }
+
+    public void reset() {
+        gameOn = false;
+        lastReset = System.currentTimeMillis();
+        movements[0] = new PVector(0, 0, 0);
+        movements[1] = new PVector(0, 0, 0);
+        recentMovements = new float[] { 0,0,0,0,0,0,0,0,0,0 };
+        ballPosition = new PVector(width / 2 - ballWidth / 2, height / 2 - ballWidth / 2);
+        boolean goingLeft = (random(-1,1) > 0);
+        float angle = radians(random(-70,70));
+
+        ballDirection = new PVector(cos(angle), sin(angle), 0);
+        ballDirection.mult(5);
+
     }
 
     public void draw() {
@@ -52,24 +70,60 @@ public class PongSketch extends PApplet {
         noStroke();
         strokeWeight(0);
         background(0);
-        drawBall();
         drawPaddles();
         drawBorders();
+        drawBall();
         drawScores();
+
+        if (!gameOn) {
+            long secondsSinceReset = (long)Math.floor((System.currentTimeMillis() - lastReset) / 1000);
+            long secondsToWait = 5;
+            if (secondsSinceReset > secondsToWait) {
+                color(102,255,51);
+                gameOn = true;
+            } else {
+                    textFont(timerFont);
+                    fill(255,0,0);
+                    text("" + (secondsToWait - secondsSinceReset), width/2 - 50, height/2 - 50);
+            }
+        }
         popMatrix();
     }
 
     private void drawBall() {
-        moveBall();
+        noStroke();
+        if (gameOn)
+            moveBall();
+
         fill(102, 255, 51);
         rect(ballPosition.x, ballPosition.y, ballWidth, ballWidth);
     }
 
+    boolean ballHitsPaddle(int paddle) {
+        return (ballPosition.y >= paddles[paddle].y && ballPosition.y <= paddles[paddle].y + paddleHeight);
+    }
     private void moveBall() {
         ballPosition.add(ballDirection);
         int ballPadding = padding + paddleWidth;
-        if (ballPosition.x < ballPadding || ballPosition.x > (width - ballPadding - ballWidth))
-            ballDirection.x *= -1;
+        boolean onPlayerCourt = ballPosition.x < (width / 2);
+        if (ballPosition.x < ballPadding || ballPosition.x > (width - ballPadding - ballWidth)) {
+            if (ballHitsPaddle(onPlayerCourt ? 0 : 1)) {
+                ballDirection.x *= -1;
+            } else {
+                if (onPlayerCourt) {
+                    scores[1] += 1;
+                } else {
+                    scores[0] += 1;
+                }
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    // don't care
+                }
+                reset();
+            }
+
+        }
 
         if (ballPosition.y < ballPadding || ballPosition.y > (height - ballPadding))
             ballDirection.y *= -1;
@@ -92,6 +146,8 @@ public class PongSketch extends PApplet {
     }
     public void mouseMoved() {
         movements[0].y = mouseY - paddleMiddle(0);
+        tick = (++tick) % recentMovements.length;
+        recentMovements[tick] = movements[0].y;
     }
 
     private void drawPaddles() {
@@ -120,7 +176,8 @@ public class PongSketch extends PApplet {
     }
 
     private void drawScores() {
-		text("" + scores[0], width/2 - 50, 50);
+        textFont(font);
+        text("" + scores[0], width/2 - 50, 50);
 		text("" + scores[1], width/2 + 50, 50);
     }
 }
