@@ -61,7 +61,7 @@ public class PongSketch extends PApplet {
         float angle = radians(random(-70,70));
 
         ballDirection = new PVector(cos(angle), sin(angle), 0);
-        ballDirection.mult(5);
+        ballDirection.mult(6);
 
     }
 
@@ -166,17 +166,17 @@ public class PongSketch extends PApplet {
                 //it hit, bounce it and add/sub velocity
                 case TOP:
                     System.out.println("TOP HIT!");
-                    ballDirection.x *= -1;
                     changeAngleAndAdjustVelocity(-angleAdjustment, velocityAdjustment);
-
+                    ballDirection.x *= -1;
                     break;
                 case BOTTOM:
                     System.out.println("BOTTOM HIT!");
-                    ballDirection.x *= -1;
                     changeAngleAndAdjustVelocity(angleAdjustment, velocityAdjustment);
+                    ballDirection.x *= -1;
                     break;
                 case CENTER:
                     System.out.println("CENTER HIT!");
+                    changeAngleAndAdjustVelocity(0, velocityAdjustment);
                     ballDirection.x *= -1;
                     break;
             }
@@ -200,22 +200,9 @@ public class PongSketch extends PApplet {
         adjustVelocity(velocity, angleDelta);
     }
     private void adjustVelocity(float adjustment, float angleDelta) {
-        boolean shouldSpeedup = (ballDirection.y * angleDelta) > 0;
-        if (shouldSpeedup) {
-            System.out.println("Speeding!");
-            if (ballDirection.mag() < 10f) {
-                ballDirection.mult(1f + adjustment);
-                log("slow %f => x = %f , y = %f", 1 + adjustment, ballDirection.x,ballDirection.y);
-            }
-        } else {
-            if (ballDirection.mag() > 1f) {
-                System.out.println("Slowing down!");
-                ballDirection.mult(1f - adjustment);
-                log("slow %f => x = %f , y = %f", 1 - adjustment, ballDirection.x,ballDirection.y);
-            } else {
-                System.out.println("Already too slow!" + ballDirection.mag());
-            }
-            ballDirection.limit(6f);
+        if (ballDirection.mag() < 10f) {
+            ballDirection.mult(1f + adjustment);
+            log("speed up %f => x = %f , y = %f", 1 + adjustment, ballDirection.x,ballDirection.y);
         }
     }
 
