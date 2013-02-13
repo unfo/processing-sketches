@@ -1,5 +1,27 @@
 
-var step = 20;
+
+void draw() {
+    stroke(0, 0, 0); // 0 black
+    background(255, 255, 255); // white
+
+    drawGrid();
+    drawCoordinates();
+   
+    for (int i = balls.size()-1; i >= 0; i--) { 
+	    Ball ball = (Ball) balls.get(i);
+
+		if (ball.withinBounds())
+            ball.update();
+        else
+            balls.remove(i);
+
+  	}  
+    drawBallCount();
+}
+
+
+
+int step = 20;
 int framerate = 60;
 float gravity = 9.81f / framerate; // 9.81 / s^2 ; framerate frames per second => increment by 1/framerate every frame;
 
@@ -16,7 +38,20 @@ class Ball {
 
     void update() {
         if (withinBounds()) {
-            motion.y += gravity;
+        	// esimerkkeja:
+        	
+        	// putoaa alas:
+            motion.y += gravity; 
+            
+            // putoaa ylos
+			// motion.y -= gravity; 
+			
+			//putoaa sivulle:
+            //motion.x -= gravity;
+
+            // putoaa kuin kovassa tuulessa:
+            // motion.y += gravity * 0.5; 
+            // motion.x += gravity * 2; 
             pos.add(motion);
             draw();
         }
@@ -29,7 +64,11 @@ class Ball {
     void draw() {
         ellipseMode(CENTER);
         noStroke();
-        fill(255, 255 * (pos.y / height), 255 * (pos.y / height));
+        float alpha = (pos.y / height);
+        float red	= 255;
+        float green = 255 * alpha;
+        float blue  = 255 * alpha;
+        fill(red, green, blue);
         ellipse(pos.x, pos.y, step, step);
     }
 }
@@ -42,30 +81,6 @@ void setup() {
     textFont(font);
 }
 
-void draw() {
-    stroke(0);
-    background(255, 255, 255); // white
-    drawGrid();
-    drawCoordinates();
-    var toBeRemoved = new Array();
-    var newBalls = []
-   
-    for (int i = balls.size()-1; i >= 0; i--) { 
-
-	    // An ArrayList doesn't know what it is storing so we have 
-
-	    // to cast the object coming out
-
-	    Ball ball = (Ball) balls.get(i);
-
-		if (ball.withinBounds())
-            ball.update();
-        else
-            balls.remove(i);
-
-  	}  
-    drawBallCount();
-}
 
 void drawGrid() {
     drawMajorLines();
@@ -102,7 +117,7 @@ void drawCoordinates() {
     // processing coordinates
     fill(225, 225, 225); // grey
     rect(0, 0, 80, 20);
-    fill(0);
+    fill(0, 0, 0); // black
     text(mouseX + "," +mouseY, 5, 15);
 
     // origo coordinates
